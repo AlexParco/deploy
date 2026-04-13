@@ -1,0 +1,51 @@
+{
+  "name": "deploy",
+  "version": "0.1.0",
+  "description": "Deploy Docker apps to VPS via SSH — zero config, zero downtime",
+  "type": "module",
+  "license": "MIT",
+  "author": "AlexParco",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexParco/deploy"
+  },
+  "homepage": "https://github.com/AlexParco/deploy#readme",
+  "bugs": "https://github.com/AlexParco/deploy/issues",
+  "keywords": [
+    "deploy",
+    "docker",
+    "ssh",
+    "vps",
+    "cli",
+    "traefik",
+    "zero-downtime"
+  ],
+  "bin": {
+    "deploy": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "node-ssh": "^13.2.1",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.7.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}

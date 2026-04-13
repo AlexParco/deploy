@@ -1,0 +1,37 @@
+# deploy.yml — Configuración de deploy
+# Docs: https://github.com/AlexParco/deploy
+
+project: my-project
+
+server:
+  host: ${SERVER_HOST}    # Se lee de .deploy/secrets
+  user: deploy            # Usuario SSH
+  port: 22
+  # key: ~/.ssh/id_ed25519  # Opcional, auto-detecta
+
+services:
+  web:
+    build: .
+    dockerfile: Dockerfile
+    port: 3000
+    domain: myapp.com
+    healthcheck: /health
+    env:
+      clear:
+        NODE_ENV: production
+      secret:
+        - DATABASE_URL
+
+# accessories:
+#   db:
+#     image: mongo:7.0
+#     port: "27017:27017"
+#     volumes:
+#       - data:/data/db
+#     env:
+#       secret:
+#         - MONGO_INITDB_ROOT_PASSWORD
+
+proxy:
+  ssl: true
+  email: tu@email.com

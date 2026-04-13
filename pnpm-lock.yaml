@@ -1,0 +1,189 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      commander:
+        specifier: ^13.1.0
+        version: 13.1.0
+      node-ssh:
+        specifier: ^13.2.1
+        version: 13.2.1
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      yaml:
+        specifier: ^2.7.1
+        version: 2.8.3
+      zod:
+        specifier: ^3.24.4
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.19.17
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+packages:
+
+  '@types/node@22.19.17':
+    resolution: {integrity: sha512-wGdMcf+vPYM6jikpS/qhg6WiqSV/OhG+jeeHT/KlVqxYfD40iYJf9/AE1uQxVWFvU7MipKRkRv8NSHiCGgPr8Q==}
+
+  asn1@0.2.6:
+    resolution: {integrity: sha512-ix/FxPn0MDjeyJ7i/yoHGFt/EX6LyNbxSEhPPXODPL+KB0VPk86UYfL0lMdy+KCnv+fmvIzySwaK5COwqVbWTQ==}
+
+  bcrypt-pbkdf@1.0.2:
+    resolution: {integrity: sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w==}
+
+  buildcheck@0.0.7:
+    resolution: {integrity: sha512-lHblz4ahamxpTmnsk+MNTRWsjYKv965MwOrSJyeD588rR3Jcu7swE+0wN5F+PbL5cjgu/9ObkhfzEPuofEMwLA==}
+    engines: {node: '>=10.0.0'}
+
+  commander@13.1.0:
+    resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
+    engines: {node: '>=18'}
+
+  cpu-features@0.0.10:
+    resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
+    engines: {node: '>=10.0.0'}
+
+  is-stream@2.0.1:
+    resolution: {integrity: sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==}
+    engines: {node: '>=8'}
+
+  make-dir@3.1.0:
+    resolution: {integrity: sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==}
+    engines: {node: '>=8'}
+
+  nan@2.26.2:
+    resolution: {integrity: sha512-0tTvBTYkt3tdGw22nrAy50x7gpbGCCFH3AFcyS5WiUu7Eu4vWlri1woE6qHBSfy11vksDqkiwjOnlR7WV8G1Hw==}
+
+  node-ssh@13.2.1:
+    resolution: {integrity: sha512-rfl4GWMygQfzlExPkQ2LWyya5n2jOBm5vhEnup+4mdw7tQhNpJWbP5ldr09Jfj93k5SfY5lxcn8od5qrQ/6mBg==}
+    engines: {node: '>= 10'}
+
+  picocolors@1.1.1:
+    resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
+
+  safer-buffer@2.1.2:
+    resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
+
+  sb-promise-queue@2.1.1:
+    resolution: {integrity: sha512-qXfdcJQMxMljxmPprn4Q4hl3pJmoljSCzUvvEBa9Kscewnv56n0KqrO6yWSrGLOL9E021wcGdPa39CHGKA6G0w==}
+    engines: {node: '>= 8'}
+
+  sb-scandir@3.1.1:
+    resolution: {integrity: sha512-Q5xiQMtoragW9z8YsVYTAZcew+cRzdVBefPbb9theaIKw6cBo34WonP9qOCTKgyAmn/Ch5gmtAxT/krUgMILpA==}
+    engines: {node: '>= 8'}
+
+  semver@6.3.1:
+    resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
+    hasBin: true
+
+  shell-escape@0.2.0:
+    resolution: {integrity: sha512-uRRBT2MfEOyxuECseCZd28jC1AJ8hmqqneWQ4VWUTgCAFvb3wKU1jLqj6egC4Exrr88ogg3dp+zroH4wJuaXzw==}
+
+  ssh2@1.17.0:
+    resolution: {integrity: sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ==}
+    engines: {node: '>=10.16.0'}
+
+  tweetnacl@0.14.5:
+    resolution: {integrity: sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  yaml@2.8.3:
+    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
+snapshots:
+
+  '@types/node@22.19.17':
+    dependencies:
+      undici-types: 6.21.0
+
+  asn1@0.2.6:
+    dependencies:
+      safer-buffer: 2.1.2
+
+  bcrypt-pbkdf@1.0.2:
+    dependencies:
+      tweetnacl: 0.14.5
+
+  buildcheck@0.0.7:
+    optional: true
+
+  commander@13.1.0: {}
+
+  cpu-features@0.0.10:
+    dependencies:
+      buildcheck: 0.0.7
+      nan: 2.26.2
+    optional: true
+
+  is-stream@2.0.1: {}
+
+  make-dir@3.1.0:
+    dependencies:
+      semver: 6.3.1
+
+  nan@2.26.2:
+    optional: true
+
+  node-ssh@13.2.1:
+    dependencies:
+      is-stream: 2.0.1
+      make-dir: 3.1.0
+      sb-promise-queue: 2.1.1
+      sb-scandir: 3.1.1
+      shell-escape: 0.2.0
+      ssh2: 1.17.0
+
+  picocolors@1.1.1: {}
+
+  safer-buffer@2.1.2: {}
+
+  sb-promise-queue@2.1.1: {}
+
+  sb-scandir@3.1.1:
+    dependencies:
+      sb-promise-queue: 2.1.1
+
+  semver@6.3.1: {}
+
+  shell-escape@0.2.0: {}
+
+  ssh2@1.17.0:
+    dependencies:
+      asn1: 0.2.6
+      bcrypt-pbkdf: 1.0.2
+    optionalDependencies:
+      cpu-features: 0.0.10
+      nan: 2.26.2
+
+  tweetnacl@0.14.5: {}
+
+  typescript@5.9.3: {}
+
+  undici-types@6.21.0: {}
+
+  yaml@2.8.3: {}
+
+  zod@3.25.76: {}
