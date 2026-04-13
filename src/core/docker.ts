@@ -151,7 +151,13 @@ async function waitForHealthy(
 // ─── Deploy Lock ─────────────────────────────────────────────────────────────
 
 export async function acquireLock(ssh: NodeSSH, project: string): Promise<void> {
-  await exec(ssh, `sudo mkdir -p ${DEPLOY_DIR}`);
+  const dirExists = await exec(ssh, `test -d ${DEPLOY_DIR} && echo "ok" || true`);
+  if (!dirExists) {
+    throw new Error(
+      `Directorio ${DEPLOY_DIR} no existe.\n` +
+      `Ejecuta primero: deploy setup`
+    );
+  }
   const existing = await exec(ssh, `cat ${LOCK_FILE} 2>/dev/null || true`);
 
   if (existing) {
