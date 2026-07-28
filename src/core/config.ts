@@ -17,6 +17,10 @@ const serviceSchema = z.object({
   port: z.number(),
   domain: z.string(),
   healthcheck: z.string().default('/health'),
+  // Volúmenes persistentes del service (mismo formato que accessories:
+  // "nombre:/ruta/en/contenedor"). Sin esto, /data vive en la capa efímera del
+  // contenedor y se PIERDE en cada redeploy (el CLI recrea el contenedor).
+  volumes: z.array(z.string()).optional().default([]),
   env: envSchema.optional().default({}),
 });
 

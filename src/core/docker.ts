@@ -58,6 +58,12 @@ export async function deployService(
 
   const labels = buildTraefikLabels(containerName, service, ssl);
   const envFlags = buildEnvFlags(envVars);
+  // Volúmenes persistentes: el nombre se prefija con el contenedor (igual que
+  // en accessories), así "data:/data" → "-v ${containerName}-data:/data". El
+  // volumen sobrevive a la recreación del contenedor en cada deploy.
+  const volumeFlags = service.volumes
+    .map(volume => `-v ${containerName}-${volume}`)
+    .join(' ');
 
   await exec(ssh, [
     'sudo docker run -d',
@@ -65,6 +71,7 @@ export async function deployService(
     `--network ${TRAEFIK_NETWORK}`,
     '--restart unless-stopped',
     labels,
+    volumeFlags,
     envFlags,
     image,
   ].join(' '));
