@@ -2,6 +2,8 @@ import { NodeSSH } from 'node-ssh';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { shQuote, shJoin } from './sh.js';
+
 export interface SSHConfig {
   host: string;
   user: string;
@@ -14,7 +16,7 @@ let connection: NodeSSH | null = null;
 function findSSHKey(explicit?: string): string {
   if (explicit) {
     const abs = resolve(explicit.replace('~', homedir()));
-    if (!existsSync(abs)) throw new Error(`SSH key no encontrada: ${abs}`);
+    if (!existsSync(abs)) throw new Error(`SSH key not found: ${abs}`);
     return abs;
   }
 
@@ -25,9 +27,9 @@ function findSSHKey(explicit?: string): string {
   }
 
   throw new Error(
-    'No se encontró SSH key. Especifica una en deploy.yml:\n' +
+    'No SSH key found. Point to one in deploy.yml:\n' +
     '  server:\n' +
-    '    key: ~/.ssh/mi_llave'
+    '    key: ~/.ssh/my_key'
   );
 }
 
@@ -36,8 +38,8 @@ export async function connect(config: SSHConfig): Promise<NodeSSH> {
 
   const ssh = new NodeSSH();
 
-  // Intentar primero con el agente SSH (soporta passphrase)
-  // Si falla, intentar con el archivo directamente
+  // Try the SSH agent first (it handles passphrase-protected keys).
+  // If that fails, fall back to reading the key file directly.
   try {
     await ssh.connect({
       host: config.host,
@@ -64,7 +66,7 @@ export async function connect(config: SSHConfig): Promise<NodeSSH> {
 export async function exec(
   ssh: NodeSSH,
   command: string,
-  opts?: { cwd?: string; stream?: boolean },
+  opts?: { cwd?: string; stream?: boolean; stdin?: string },
 ): Promise<string> {
   if (opts?.stream) {
     const result = await ssh.execCommand(command, {
@@ -75,10 +77,12 @@ export async function exec(
     return result.stdout;
   }
 
-  const result = await ssh.execCommand(command, { cwd: opts?.cwd });
+  // stdin travels over the SSH channel, not through argv: this is how secrets
+  // reach the server without showing up in `ps` or in the sudo log.
+  const result = await ssh.execCommand(command, { cwd: opts?.cwd, stdin: opts?.stdin });
 
   if (result.code !== 0 && result.code !== null) {
-    throw new Error(`Comando falló (exit ${result.code}): ${command}\n${result.stderr}`);
+    throw new Error(`Command failed (exit ${result.code}): ${command}\n${result.stderr}`);
   }
 
   return result.stdout.trim();
@@ -91,26 +95,58 @@ export async function disconnect(): Promise<void> {
   }
 }
 
+/**
+ * Builds the argument list for rsync.
+ *
+ * Separate from running it so the arguments can be asserted on: this is the one
+ * place where a path or an exclude could be mistaken for a flag.
+ *
+ * The arguments go to execFileSync without a shell, so they reach the process
+ * verbatim — an exclude or a path containing spaces or quotes cannot turn into
+ * another command. Only sshCommand needs quoting, because rsync hands that one
+ * to a shell of its own.
+ */
+export function buildRsyncArgs(
+  config: SSHConfig,
+  localDir: string,
+  remoteDir: string,
+  excludes: string[],
+  keyPath: string | null,
+): string[] {
+  const sshCommand = shJoin([
+    'ssh',
+    keyPath ? `-i ${shQuote(keyPath)}` : '',
+    `-p ${config.port}`,
+    '-o StrictHostKeyChecking=accept-new',
+  ]);
+
+  return [
+    '-az',
+    '--delete',
+    ...excludes.map(exclude => `--exclude=${exclude}`),
+    '-e', sshCommand,
+    `${localDir}/`,
+    `${config.user}@${config.host}:${remoteDir}/`,
+  ];
+}
+
 export async function rsync(
   config: SSHConfig,
   localDir: string,
   remoteDir: string,
   excludes: string[] = [],
 ): Promise<void> {
-  const { execSync } = await import('node:child_process');
+  const { execFileSync } = await import('node:child_process');
 
-  const excludeFlags = excludes.map(e => `--exclude='${e}'`).join(' ');
   const keyPath = config.key ? findSSHKey(config.key) : null;
-  const keyFlag = keyPath ? `-i ${keyPath}` : '';
-  const sshFlag = `-e "ssh ${keyFlag} -p ${config.port} -o StrictHostKeyChecking=accept-new"`;
+  const args = buildRsyncArgs(config, localDir, remoteDir, excludes, keyPath);
 
-  const cmd = [
-    'rsync -azP --delete',
-    excludeFlags,
-    sshFlag,
-    `${localDir}/`,
-    `${config.user}@${config.host}:${remoteDir}/`,
-  ].join(' ');
-
-  execSync(cmd, { stdio: 'pipe', timeout: 300_000 });
+  try {
+    execFileSync('rsync', args, { stdio: 'pipe', timeout: 300_000 });
+  } catch (err) {
+    // execSync/execFileSync throw an error with a useless message ("Command
+    // failed"); rsync's actual reason is in stderr.
+    const stderr = (err as { stderr?: Buffer }).stderr?.toString().trim();
+    throw new Error(`rsync failed${stderr ? `:\n${stderr}` : ''}`);
+  }
 }

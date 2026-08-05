@@ -1,8 +1,10 @@
 {
   "name": "deploy",
   "version": "0.1.0",
-  "description": "Deploy Docker apps to VPS via SSH — zero config, zero downtime",
+  "description": "Deploy Docker apps to a VPS over SSH, with no registry and no agents",
   "type": "module",
+  "private": true,
+  "_comment_private": "Not published yet. Also, the name 'deploy' is already taken on npm by another package: pick a different one before publishing.",
   "license": "MIT",
   "author": "AlexParco",
   "repository": {
@@ -32,6 +34,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test": "tsc && node --test \"test/**/*.test.ts\"",
     "prepublishOnly": "npm run build"
   },
   "engines": {

@@ -18,7 +18,7 @@ program
 // ─── init ────────────────────────────────────────────────────────────────────
 program
   .command('init')
-  .description('Genera deploy.yml y .deploy/secrets en el proyecto actual')
+  .description('Generate deploy.yml and .deploy/secrets in the current project')
   .action(async () => {
     const { init } = await import('./commands/init.js');
     await init();
@@ -27,7 +27,7 @@ program
 // ─── setup ───────────────────────────────────────────────────────────────────
 program
   .command('setup')
-  .description('Prepara el VPS: Docker, firewall, Traefik')
+  .description('Prepare the VPS: Docker, firewall, Traefik')
   .action(async () => {
     const { setup } = await import('./commands/setup.js');
     await setup();
@@ -36,18 +36,26 @@ program
 // ─── deploy ──────────────────────────────────────────────────────────────────
 program
   .command('deploy')
-  .description('Build y deploy al VPS')
-  .option('-s, --service <name>', 'Desplegar solo un servicio')
-  .option('--force', 'Forzar deploy (ignora lock)')
+  .description('Build and deploy to the VPS')
+  .option('-s, --service <name>', 'Deploy a single service only')
   .action(async (opts) => {
     const { deploy } = await import('./commands/deploy.js');
     await deploy(opts);
   });
 
+// ─── unlock ──────────────────────────────────────────────────────────────────
+program
+  .command('unlock')
+  .description('Release the lock left by an interrupted deploy')
+  .action(async () => {
+    const { unlock } = await import('./commands/unlock.js');
+    await unlock();
+  });
+
 // ─── status ──────────────────────────────────────────────────────────────────
 program
   .command('status')
-  .description('Estado de los servicios en el VPS')
+  .description('Show the state of the services on the VPS')
   .action(async () => {
     const { status } = await import('./commands/status.js');
     await status();
@@ -56,8 +64,8 @@ program
 // ─── logs ────────────────────────────────────────────────────────────────────
 program
   .command('logs <service>')
-  .description('Ver logs de un servicio')
-  .option('-n, --lines <number>', 'Número de líneas', '100')
+  .description('Stream a service logs')
+  .option('-n, --lines <number>', 'Number of lines', '100')
   .action(async (service, opts) => {
     const { logs } = await import('./commands/logs.js');
     await logs(service, opts);
@@ -66,7 +74,7 @@ program
 // ─── rollback ────────────────────────────────────────────────────────────────
 program
   .command('rollback <service>')
-  .description('Rollback un servicio a la versión anterior')
+  .description('Roll a service back to its previous version')
   .action(async (service) => {
     const { rollback } = await import('./commands/rollback.js');
     await rollback(service);

@@ -1,12 +1,17 @@
 import { loadConfig, getSecretsPath, getAllSecretNames } from '../core/config.js';
-import type { ServiceConfig, AccessoryConfig } from '../core/config.js';
+import type { DeployConfig } from '../core/config.js';
 import { connect, exec, disconnect, rsync } from '../core/ssh.js';
+import { normalizePortBinding } from '../core/ports.js';
+import type { AccessoryAction } from '../core/docker.js';
 import {
   getGitSHA,
+  getDirtyFiles,
   buildImage,
+  buildContainerEnv,
   deployAccessory,
   deployService,
-  ensureTraefikRunning,
+  assertProxyMatches,
+  sweepStaleSecrets,
   acquireLock,
   releaseLock,
   cleanupImages,
@@ -16,7 +21,32 @@ import { log, spinner } from '../utils/logger.js';
 
 interface DeployOptions {
   service?: string;
-  force?: boolean;
+}
+
+const ACCESSORY_LABELS: Record<AccessoryAction, string> = {
+  created: 'created',
+  started: 'started',
+  recreated: 'recreated',
+  unchanged: 'unchanged',
+};
+
+/**
+ * Warns about accessories published on every interface.
+ *
+ * Docker writes its rules ahead of ufw, so a port published on 0.0.0.0 stays
+ * reachable from the internet even with the firewall enabled.
+ */
+function warnPublicPorts(config: DeployConfig): void {
+  for (const [name, accessory] of Object.entries(config.accessories ?? {})) {
+    if (!accessory.port) continue;
+    if (!normalizePortBinding(accessory.port).isPublic) continue;
+
+    log.warn(
+      `Accessory '${name}' publishes ${accessory.port} on every interface: it is ` +
+      `reachable from the internet, and ufw will not block it because Docker ` +
+      `writes its rules first. Use "127.0.0.1:..." unless you want it public.`,
+    );
+  }
 }
 
 export async function deploy(opts: DeployOptions) {
@@ -24,35 +54,70 @@ export async function deploy(opts: DeployOptions) {
   const sha = getGitSHA();
   const secretsPath = getSecretsPath();
 
-  log.banner(`Deploy: ${config.project}@${sha}`);
+  // rsync uploads the working tree, not the commit: with uncommitted changes the
+  // image ends up tagged with a SHA that does NOT match its contents, and
+  // rebuilding overwrites the previous image under the same tag (losing that
+  // rollback point). Warn instead of pretending the tag means something.
+  const dirty = getDirtyFiles();
+  if (dirty.length > 0) {
+    log.warn(
+      `${dirty.length} uncommitted file(s). The working tree will be deployed, ` +
+      `but the image will be tagged ${sha}, which does not reflect it.`,
+    );
+  }
+
+  log.banner(`Deploy: ${config.project}@${sha}${dirty.length > 0 ? ' (dirty)' : ''}`);
   log.table([
-    ['Proyecto', config.project],
-    ['Servidor', `${config.server.user}@${config.server.host}`],
+    ['Project', config.project],
+    ['Server', `${config.server.user}@${config.server.host}`],
     ['Commit', sha],
   ]);
   console.log();
 
-  const allSecretNames = getAllSecretNames(config);
+  warnPublicPorts(config);
+
+  const servicesToDeploy = opts.service
+    ? Object.entries(config.services).filter(([name]) => name === opts.service)
+    : Object.entries(config.services);
+
+  if (opts.service && servicesToDeploy.length === 0) {
+    throw new Error(
+      `Service '${opts.service}' is not defined in deploy.yml.\n` +
+      `Available: ${Object.keys(config.services).join(', ')}`,
+    );
+  }
+
+  // Only what this deploy actually needs, so --service does not demand the
+  // secrets of services it is not touching.
+  const allSecretNames = getAllSecretNames(config, servicesToDeploy.map(([name]) => name));
   let secrets: Record<string, string> = {};
   if (allSecretNames.length > 0) {
     secrets = resolveSecrets(allSecretNames, secretsPath);
-    log.success(`${allSecretNames.length} secretos resueltos`);
+    log.success(`${allSecretNames.length} secret(s) resolved`);
   }
 
   const ssh = await connect(config.server);
-  log.success(`Conectado a ${config.server.host}`);
+  log.success(`Connected to ${config.server.host}`);
 
-  if (opts.force) {
-    await releaseLock(ssh);
-  }
+  /** Services whose traffic already points at the new version. */
+  const switched: string[] = [];
+
   await acquireLock(ssh, config.project);
 
   try {
-    const traefikSpinner = spinner('Verificando Traefik...');
-    await ensureTraefikRunning(ssh, config.proxy.email);
-    traefikSpinner.success('Traefik OK');
+    // Under the lock, so nothing of this project can be mid-run: clears secret
+    // files stranded by deploys that were killed before their cleanup ran.
+    await sweepStaleSecrets(ssh, config.project);
 
-    const syncSpinner = spinner('Sincronizando código...');
+    // Deploy never modifies Traefik: it is shared by every project on the
+    // server, so reconfiguring it belongs to `deploy setup`. Here we only check
+    // that what runs matches what this project declares, and say so if not.
+    const traefikSpinner = spinner('Checking Traefik...');
+    const proxyWarnings = await assertProxyMatches(ssh, config.proxy);
+    traefikSpinner.success('Traefik OK');
+    for (const warning of proxyWarnings) log.warn(warning);
+
+    const syncSpinner = spinner('Syncing code...');
     const remoteDir = `/opt/deploy/${config.project}`;
     await exec(ssh, `mkdir -p ${remoteDir}`);
     await rsync(config.server, process.cwd(), remoteDir, [
@@ -63,61 +128,70 @@ export async function deploy(opts: DeployOptions) {
       'dist',
       '.astro',
     ]);
-    syncSpinner.success('Código sincronizado');
+    syncSpinner.success('Code synced');
 
     for (const [name, accessory] of Object.entries(config.accessories ?? {})) {
       const accSpinner = spinner(`Accessory: ${name}...`);
       const accEnv = buildContainerEnv(accessory, secrets);
-      await deployAccessory(ssh, config.project, name, accessory, accEnv);
-      accSpinner.success(`Accessory: ${name}`);
-    }
+      const action = await deployAccessory(ssh, config.project, name, accessory, accEnv);
+      accSpinner.success(`Accessory: ${name} (${ACCESSORY_LABELS[action]})`);
 
-    const servicesToDeploy = opts.service
-      ? Object.entries(config.services).filter(([name]) => name === opts.service)
-      : Object.entries(config.services);
-
-    if (opts.service && servicesToDeploy.length === 0) {
-      throw new Error(`Servicio '${opts.service}' no encontrado en deploy.yml`);
+      if (action === 'recreated') {
+        log.warn(
+          `${name} was recreated because its configuration changed in deploy.yml. ` +
+          `Its volumes are kept, but the container restarted.`,
+        );
+      }
     }
 
     for (const [name, service] of servicesToDeploy) {
-      const buildSpinner = spinner(`Build: ${name}...`);
-      const image = await buildImage(ssh, config.project, name, service, sha);
-      buildSpinner.success(`Build: ${name} → ${image}`);
+      try {
+        const buildSpinner = spinner(`Build: ${name}...`);
+        const image = await buildImage(ssh, config.project, name, service, sha);
+        buildSpinner.success(`Build: ${name} → ${image}`);
 
-      const svcEnv = buildContainerEnv(service, secrets);
+        const svcEnv = buildContainerEnv(service, secrets);
 
-      const deploySpinner = spinner(`Deploy: ${name}...`);
-      await deployService(ssh, config.project, name, service, image, svcEnv, config.proxy.ssl);
-      deploySpinner.success(`Deploy: ${name} → ${service.domain}`);
+        const deploySpinner = spinner(`Deploy: ${name}...`);
+        await deployService(ssh, {
+          project: config.project,
+          serviceName: name,
+          service,
+          image,
+          env: svcEnv,
+          ssl: config.proxy.ssl,
+          sha,
+        });
+        deploySpinner.success(`Deploy: ${name} → ${service.domain}`);
+        switched.push(name);
+      } catch (err) {
+        // Services are deployed one after another, so a failure halfway leaves
+        // the project split across two versions. Which ones already switched is
+        // the first thing you need to know, and it would otherwise be buried
+        // under the error.
+        if (switched.length > 0) {
+          log.warn(
+            `'${name}' failed, but these services are already serving ${sha}: ` +
+            `${switched.join(', ')}. The rest are untouched.`,
+          );
+        }
+        throw err;
+      }
     }
 
-    const cleanupSpinner = spinner('Limpiando imágenes antiguas...');
-    await cleanupImages(ssh, config.project);
-    cleanupSpinner.success('Limpieza completada');
+    const cleanupSpinner = spinner('Cleaning up old images...');
+    await cleanupImages(ssh, config.project, Object.keys(config.services));
+    cleanupSpinner.success('Cleanup done');
 
   } finally {
-    await releaseLock(ssh);
+    await releaseLock(ssh, config.project);
     await disconnect();
   }
 
   console.log();
-  log.banner('Deploy completado');
-  for (const [, service] of Object.entries(config.services)) {
-    const proto = config.proxy.ssl ? 'https' : 'http';
-    log.success(`${service.domain} → ${proto}://${service.domain}`);
+  log.banner('Deploy complete');
+  const proto = config.proxy.ssl ? 'https' : 'http';
+  for (const [name, service] of servicesToDeploy) {
+    log.success(`${name} → ${proto}://${service.domain}`);
   }
-}
-
-function buildContainerEnv(
-  serviceOrAccessory: ServiceConfig | AccessoryConfig,
-  secrets: Record<string, string>,
-): Record<string, string> {
-  const env: Record<string, string> = { ...serviceOrAccessory.env?.clear };
-  for (const secretName of serviceOrAccessory.env?.secret ?? []) {
-    if (secrets[secretName]) {
-      env[secretName] = secrets[secretName];
-    }
-  }
-  return env;
 }

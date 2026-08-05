@@ -11,24 +11,29 @@ export async function init() {
   // deploy.yml
   const configPath = resolve(cwd, 'deploy.yml');
   if (existsSync(configPath)) {
-    log.warn('deploy.yml ya existe, no se sobreescribe');
+    log.warn('deploy.yml already exists, leaving it alone');
   } else {
     const templatePath = resolve(__dirname, '../../templates/deploy.yml');
     const template = readFileSync(templatePath, 'utf-8');
     writeFileSync(configPath, template);
-    log.success('deploy.yml creado');
+    log.success('deploy.yml created');
   }
 
   // .deploy/secrets
   const secretsDir = resolve(cwd, '.deploy');
   const secretsPath = resolve(secretsDir, 'secrets');
-  if (!existsSync(secretsDir)) mkdirSync(secretsDir);
+  if (!existsSync(secretsDir)) mkdirSync(secretsDir, { recursive: true, mode: 0o700 });
 
   if (existsSync(secretsPath)) {
-    log.warn('.deploy/secrets ya existe, no se sobreescribe');
+    log.warn('.deploy/secrets already exists, leaving it alone');
   } else {
-    writeFileSync(secretsPath, '# Secretos de producción (NO commitear)\n# DATABASE_URL=postgres://...\n');
-    log.success('.deploy/secrets creado');
+    // 0600: the default would be 0644, readable by any user on the machine.
+    writeFileSync(
+      secretsPath,
+      '# Production secrets (DO NOT commit)\n# DATABASE_URL=postgres://...\n',
+      { mode: 0o600 },
+    );
+    log.success('.deploy/secrets created (readable only by you)');
   }
 
   // .gitignore
@@ -40,15 +45,15 @@ export async function init() {
     const toAdd = gitignoreEntries.filter(e => !content.includes(e));
     if (toAdd.length > 0) {
       appendFileSync(gitignorePath, '\n# deploy\n' + toAdd.join('\n') + '\n');
-      log.success('.gitignore actualizado');
+      log.success('.gitignore updated');
     }
   } else {
     writeFileSync(gitignorePath, '# deploy\n' + gitignoreEntries.join('\n') + '\n');
-    log.success('.gitignore creado');
+    log.success('.gitignore created');
   }
 
-  log.banner('Proyecto listo');
-  log.info('Edita deploy.yml con tu configuración');
-  log.info('Agrega secretos a .deploy/secrets');
-  log.info('Luego ejecuta: deploy setup && deploy deploy');
+  log.banner('Project ready');
+  log.info('Edit deploy.yml with your configuration');
+  log.info('Add your secrets to .deploy/secrets');
+  log.info('Then run: deploy setup && deploy deploy');
 }

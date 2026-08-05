@@ -18,7 +18,7 @@ export function parseEnvFile(filePath: string): Record<string, string> {
     const key = trimmed.slice(0, eqIndex).trim();
     let value = trimmed.slice(eqIndex + 1).trim();
 
-    // Quitar comillas si las tiene
+    // Strip surrounding quotes if present
     if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
@@ -50,8 +50,8 @@ export function resolveSecrets(
 
   if (missing.length > 0) {
     throw new Error(
-      `Secretos faltantes: ${missing.join(', ')}\n` +
-      `Agrégalos a ${secretsFile} o como variables de entorno.`
+      `Missing secrets: ${missing.join(', ')}\n` +
+      `Add them to ${secretsFile} or export them as environment variables.`
     );
   }
 

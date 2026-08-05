@@ -9,13 +9,17 @@ export async function status() {
   log.banner(`Status: ${config.project}`);
 
   const ssh = await connect(config.server);
-  const output = await getStatus(ssh, config.project);
 
-  if (output) {
-    console.log(output);
-  } else {
-    log.warn('No hay contenedores corriendo');
+  try {
+    const status = await getStatus(ssh, config.project);
+
+    if (status.count > 0) {
+      console.log(status.text);
+    } else {
+      log.warn(`No containers running for '${config.project}'`);
+      log.info('If you deployed with an older version, they carry no identity labels yet.');
+    }
+  } finally {
+    await disconnect();
   }
-
-  await disconnect();
 }

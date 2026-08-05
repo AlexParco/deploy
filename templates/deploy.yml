@@ -1,13 +1,13 @@
-# deploy.yml — Configuración de deploy
+# deploy.yml — deploy configuration
 # Docs: https://github.com/AlexParco/deploy
 
 project: my-project
 
 server:
-  host: ${SERVER_HOST}    # Se lee de .deploy/secrets
-  user: deploy            # Usuario SSH
+  host: ${SERVER_HOST}    # Read from .deploy/secrets
+  user: deploy            # SSH user
   port: 22
-  # key: ~/.ssh/id_ed25519  # Opcional, auto-detecta
+  # key: ~/.ssh/id_ed25519  # Optional, auto-detected
 
 services:
   web:
@@ -15,7 +15,20 @@ services:
     dockerfile: Dockerfile
     port: 3000
     domain: myapp.com
+
+    # Path that must answer 2xx for the deploy to be accepted. If it does not,
+    # the previous container keeps serving and the new one is discarded.
     healthcheck: /health
+
+    # How long the service may take to answer before the deploy gives up.
+    # Raise it if your app runs migrations or warms caches on boot.
+    # startup_timeout: 60
+
+    # The container is recreated on every deploy: anything written outside a
+    # volume is LOST. Format "name:/path" (named volumes only).
+    # volumes:
+    #   - uploads:/app/uploads
+
     env:
       clear:
         NODE_ENV: production
@@ -25,13 +38,21 @@ services:
 # accessories:
 #   db:
 #     image: mongo:7.0
-#     port: "27017:27017"
 #     volumes:
 #       - data:/data/db
 #     env:
 #       secret:
 #         - MONGO_INITDB_ROOT_PASSWORD
+#
+#     # Publishing the port is not needed for your services to use the database:
+#     # they share a network and resolve by name. From web, the URL would be
+#     # mongodb://my-project-db:27017 (the container is named <project>-<db>).
+#     #
+#     # If you do publish it, it binds to 127.0.0.1 and is only reachable through
+#     # an SSH tunnel:
+#     #   ssh -L 27017:127.0.0.1:27017 user@server
+#     # port: "27017:27017"
 
 proxy:
   ssl: true
-  email: tu@email.com
+  email: you@example.com

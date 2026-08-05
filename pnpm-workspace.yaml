@@ -1,0 +1,6 @@
+allowBuilds:
+  # ssh2 optionally builds cpu-features (used to pick ciphers). It is not
+  # needed: without the native binary it falls back to pure JS. Kept false so
+  # `pnpm install` does not require a compiler toolchain on every machine.
+  cpu-features: false
+  ssh2: false
