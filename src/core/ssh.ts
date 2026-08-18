@@ -38,26 +38,43 @@ export async function connect(config: SSHConfig): Promise<NodeSSH> {
 
   const ssh = new NodeSSH();
 
-  // Try the SSH agent first (it handles passphrase-protected keys).
-  // If that fails, fall back to reading the key file directly.
-  try {
-    await ssh.connect({
-      host: config.host,
-      username: config.user,
-      port: config.port,
-      agent: process.env.SSH_AUTH_SOCK,
-      readyTimeout: 10_000,
-    });
-  } catch {
-    const keyPath = findSSHKey(config.key);
-    await ssh.connect({
-      host: config.host,
-      username: config.user,
-      port: config.port,
-      privateKeyPath: keyPath,
-      readyTimeout: 10_000,
-    });
+  // El handshake desde un runner de CI a un VPS puede ser LENTO —segundos, no
+  // milisegundos, por latencia/pérdida en el camino—, y el openssh lo completa
+  // igual. El default anterior de 10s cortaba justo esos casos: el deploy moría
+  // con "Timed out while waiting for handshake" en Actions aunque `ssh` a mano
+  // desde el mismo runner conectara bien. 30s tolera el handshake lento sin
+  // colgar de más un deploy interactivo cuando el server no responde.
+  const readyTimeout = 30_000;
+
+  // El agente sólo aporta si EXISTE (dev con ssh-agent, para keys con passphrase).
+  // En CI no hay `SSH_AUTH_SOCK`, y probarlo igual —con `agent: undefined`— es un
+  // handshake entero sin método de auth que gasta el presupuesto antes de llegar
+  // a la key. Si no hay agente, se va derecho a la key.
+  if (process.env.SSH_AUTH_SOCK) {
+    try {
+      await ssh.connect({
+        host: config.host,
+        username: config.user,
+        port: config.port,
+        agent: process.env.SSH_AUTH_SOCK,
+        readyTimeout,
+      });
+      connection = ssh;
+      return ssh;
+    } catch {
+      // El agente no resolvió (sin la key cargada, o el server la rechazó): se
+      // cae a leer el archivo de key directamente, abajo.
+    }
   }
+
+  const keyPath = findSSHKey(config.key);
+  await ssh.connect({
+    host: config.host,
+    username: config.user,
+    port: config.port,
+    privateKeyPath: keyPath,
+    readyTimeout,
+  });
 
   connection = ssh;
   return ssh;
